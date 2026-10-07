@@ -25,7 +25,7 @@ module OpenTelemetry
             member.strip!
             kv = member.split('=')
             k, v = *kv
-            next unless kv.length == 2 && VALID_KEY.match?(k) && VALID_VALUE.match?(v)
+            next unless kv.length == 2 && VALID_KEY.match(k) && VALID_VALUE.match(v)
 
             memo[k] = v
           end
@@ -43,7 +43,7 @@ module OpenTelemetry
         # @return [Tracestate] A new Tracestate instance or DEFAULT
         def from_hash(hash)
           hash = hash.select do |k, v|
-            valid = VALID_KEY.match?(k) && VALID_VALUE.match?(v)
+            valid = VALID_KEY.match(k) && VALID_VALUE.match(v)
             OpenTelemetry.logger.debug("Invalid Tracestate member - #{k} : #{v}") unless valid
             valid
           end
@@ -75,7 +75,7 @@ module OpenTelemetry
       # @return [Tracestate]
       def initialize(hash)
         excess = hash.size - MAX_MEMBER_COUNT
-        hash = hash.drop(excess).to_h if excess.positive?
+        hash = Hash[hash.drop(excess)] if excess > 0
         @hash = hash.freeze
       end
 
@@ -100,12 +100,12 @@ module OpenTelemetry
       # @return [Tracestate] self, if unchanged, or a new Tracestate containing
       #   the new or updated key/value pair.
       def set_value(key, value)
-        unless VALID_KEY.match?(key) && VALID_VALUE.match?(value)
+        unless VALID_KEY.match(key) && VALID_VALUE.match(value)
           OpenTelemetry.logger.debug("Invalid Tracestate member - #{key} : #{value}")
           return self
         end
 
-        h = @hash.to_h.dup
+        h = @hash.dup
         h[key] = value
         self.class.create(h)
       end
@@ -118,7 +118,7 @@ module OpenTelemetry
       def delete(key)
         return self unless @hash.key?(key)
 
-        h = @hash.to_h.dup
+        h = @hash.dup
         h.delete(key)
         self.class.create(h)
       end
@@ -128,7 +128,7 @@ module OpenTelemetry
       #
       # @return [String] this Tracestate encoded as a string.
       def to_s
-        @hash.inject(+'') do |memo, (k, v)|
+        @hash.inject(''.dup) do |memo, (k, v)|
           memo << k << '=' << v << ','
         end.chop! || ''
       end

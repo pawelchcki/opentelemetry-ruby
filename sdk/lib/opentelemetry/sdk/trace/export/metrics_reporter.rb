@@ -32,27 +32,45 @@ module OpenTelemetry
 
           # Adds an increment to a metric with the provided labels.
           #
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
           # @param [String] metric The metric name.
-          # @param [optional Numeric] increment An optional increment to report.
-          # @param [optional Hash<String, String>] labels Optional labels to
+          # @option options [Numeric] increment An optional increment to report.
+          # @option options [Hash<String, String>] labels Optional labels to
           #   associate with the metric.
-          def add_to_counter(metric, increment: 1, labels: {}); end
+          def add_to_counter(metric, options = {})
+            OpenTelemetry::Internal.validate_options(options, [:increment, :labels])
+            _increment = options.fetch(:increment, 1)
+            _labels = options.fetch(:labels) { {} }
+            nil
+          end
 
           # Records a value for a metric with the provided labels.
           #
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
           # @param [String] metric The metric name.
-          # @param [Numeric] value The value to report.
-          # @param [optional Hash<String, String>] labels Optional labels to
+          # @option options [Numeric] value The value to report.
+          # @option options [Hash<String, String>] labels Optional labels to
           #   associate with the metric.
-          def record_value(metric, value:, labels: {}); end
+          def record_value(metric, options = {})
+            OpenTelemetry::Internal.validate_options(options, [:value, :labels], [:value])
+            _value = options.fetch(:value)
+            _labels = options.fetch(:labels) { {} }
+            nil
+          end
 
           # Observes a value for a metric with the provided labels.
           #
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
           # @param [String] metric The metric name.
-          # @param [Numeric] value The value to observe.
-          # @param [optional Hash<String, String>] labels Optional labels to
+          # @option options [Numeric] value The value to observe.
+          # @option options [Hash<String, String>] labels Optional labels to
           #   associate with the metric.
-          def observe_value(metric, value:, labels: {}); end
+          def observe_value(metric, options = {})
+            OpenTelemetry::Internal.validate_options(options, [:value, :labels], [:value])
+            _value = options.fetch(:value)
+            _labels = options.fetch(:labels) { {} }
+            nil
+          end
         end
       end
     end

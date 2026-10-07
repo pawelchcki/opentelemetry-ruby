@@ -50,6 +50,37 @@ describe OpenTelemetry::Common::Utilities do
     end
   end
 
+  describe '#exception_stacktrace' do
+    it 'preserves modern exception formatting' do
+      error = RuntimeError.new('failure')
+      error.set_backtrace(['app.rb:12:in `request`'])
+
+      assert_equal error.full_message(highlight: false, order: :top), common_utils.exception_stacktrace(error)
+    end
+
+    it 'formats legacy exceptions and replaces invalid UTF-8' do
+      error = RuntimeError.new("bad\xFF".dup.force_encoding(Encoding::UTF_8))
+      error.set_backtrace(['app.rb:12:in `request`'])
+      error.define_singleton_method(:respond_to?) { |name| name == :full_message ? false : super(name) }
+      stacktrace = common_utils.exception_stacktrace(error)
+
+      assert_predicate stacktrace, :valid_encoding?
+      assert_includes stacktrace, "RuntimeError: bad\uFFFD"
+      assert_includes stacktrace, 'app.rb:12'
+    end
+  end
+
+  describe '#maybe_timeout' do
+    it 'reduces a timeout using elapsed monotonic time' do
+      start = common_utils.timeout_timestamp
+      sleep 0.001
+
+      assert_operator common_utils.maybe_timeout(1, start), :<, 1
+      assert_equal 0, common_utils.maybe_timeout(0, start)
+      assert_nil common_utils.maybe_timeout(nil, start)
+    end
+  end
+
   describe '#utf8_encode' do
     it 'happy path' do
       str = 'pristine ￢'.encode(Encoding::UTF_8)

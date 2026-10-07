@@ -1,0 +1,10 @@
+inherit_from: ../contrib/rubocop-legacy.yml
+
+# Each integration check validates several aspects of a complete SDK operation.
+Metrics/ClassLength:
+  Max: 200
+Minitest/MultipleAssertions:
+  Max: 5
+Style/HashConversion:
+  Exclude:
+    - 'test/**/*'

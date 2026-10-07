@@ -24,10 +24,13 @@ module OpenTelemetry
     # methods on +Baggage+, if multiple modifications are being made, use
     # this one.
     #
-    # @param [optional Context] context The context to update with with new
+    # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+    # @option options [Context] context The context to update with with new
     #   modified baggage. Defaults to +Context.current+
     # @return [Context]
-    def build(context: Context.current)
+    def build(options = {})
+      OpenTelemetry::Internal.validate_options(options, [:context])
+      context = options.fetch(:context) { Context.current }
       builder = Builder.new(baggage_for(context).dup)
       yield builder
       context.set_value(BAGGAGE_KEY, builder.entries)
@@ -35,51 +38,68 @@ module OpenTelemetry
 
     # Returns a new context with empty baggage
     #
-    # @param [optional Context] context Context to clear baggage from. Defaults
+    # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+    # @option options [Context] context Context to clear baggage from. Defaults
     #   to +Context.current+
     # @return [Context]
-    def clear(context: Context.current)
+    def clear(options = {})
+      OpenTelemetry::Internal.validate_options(options, [:context])
+      context = options.fetch(:context) { Context.current }
       context.set_value(BAGGAGE_KEY, EMPTY_BAGGAGE)
     end
 
     # Returns the corresponding baggage.entry (or nil) for key
     #
+    # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
     # @param [String] key The lookup key
-    # @param [optional Context] context The context from which to retrieve
+    # @option options [Context] context The context from which to retrieve
     #   the key.
     #   Defaults to +Context.current+
     # @return [String]
-    def value(key, context: Context.current)
-      baggage_for(context)[key]&.value
+    def value(key, options = {})
+      OpenTelemetry::Internal.validate_options(options, [:context])
+      context = options.fetch(:context) { Context.current }
+      entry = baggage_for(context)[key]
+      entry && entry.value
     end
 
     # Returns the baggage
     #
-    # @param [optional Context] context The context from which to retrieve
+    # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+    # @option options [Context] context The context from which to retrieve
     #   the baggage.
     #   Defaults to +Context.current+
     # @return [Hash]
-    def values(context: Context.current)
-      baggage_for(context).transform_values(&:value)
+    def values(options = {})
+      OpenTelemetry::Internal.validate_options(options, [:context])
+      context = options.fetch(:context) { Context.current }
+      baggage_for(context).each_with_object({}) { |(key, entry), values| values[key] = entry.value }
     end
 
+    # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
     # @api private
-    def raw_entries(context: Context.current)
+    def raw_entries(options = {})
+      OpenTelemetry::Internal.validate_options(options, [:context])
+      context = options.fetch(:context) { Context.current }
       baggage_for(context).dup.freeze
     end
 
     # Returns a new context with new key-value pair
     #
+    # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
     # @param [String] key The key to store this value under
     # @param [String] value String value to be stored under key
-    # @param [optional String] metadata This is here to store properties
+    # @option options [String] metadata This is here to store properties
     #   received from other W3C Baggage implementations but is not exposed in
     #   OpenTelemetry. This is condsidered private API and not for use by
     #   end-users.
-    # @param [optional Context] context The context to update with new
+    # @option options [Context] context The context to update with new
     #   value. Defaults to +Context.current+
     # @return [Context]
-    def set_value(key, value, metadata: nil, context: Context.current)
+    def set_value(key, value, options = {})
+      OpenTelemetry::Internal.validate_options(options, [:metadata, :context])
+      metadata = options.fetch(:metadata, nil)
+      context = options.fetch(:context) { Context.current }
       new_baggage = baggage_for(context).dup
       new_baggage[key] = Entry.new(value, metadata)
       context.set_value(BAGGAGE_KEY, new_baggage)
@@ -87,11 +107,14 @@ module OpenTelemetry
 
     # Returns a new context with value at key removed
     #
+    # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
     # @param [String] key The key to remove
-    # @param [optional Context] context The context to remove baggage
+    # @option options [Context] context The context to remove baggage
     #   from. Defaults to +Context.current+
     # @return [Context]
-    def remove_value(key, context: Context.current)
+    def remove_value(key, options = {})
+      OpenTelemetry::Internal.validate_options(options, [:context])
+      context = options.fetch(:context) { Context.current }
       baggage = baggage_for(context)
       return context unless baggage.key?(key)
 

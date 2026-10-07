@@ -41,10 +41,18 @@ module OpenTelemetry
             "ParentBased{root=#{@root.description}, remote_parent_sampled=#{@remote_parent_sampled.description}, remote_parent_not_sampled=#{@remote_parent_not_sampled.description}, local_parent_sampled=#{@local_parent_sampled.description}, local_parent_not_sampled=#{@local_parent_not_sampled.description}}"
           end
 
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
           # @api private
           #
           # See {Samplers}.
-          def should_sample?(trace_id:, parent_context:, links:, name:, kind:, attributes:)
+          def should_sample?(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:trace_id, :parent_context, :links, :name, :kind, :attributes], [:trace_id, :parent_context, :links, :name, :kind, :attributes])
+            trace_id = options.fetch(:trace_id)
+            parent_context = options.fetch(:parent_context)
+            links = options.fetch(:links)
+            name = options.fetch(:name)
+            kind = options.fetch(:kind)
+            attributes = options.fetch(:attributes)
             parent_span_context = OpenTelemetry::Trace.current_span(parent_context).context
             delegate = if !parent_span_context.valid?
                          @root

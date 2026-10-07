@@ -16,7 +16,9 @@ module OpenTelemetry
             @stopped = false
           end
 
-          def export(spans, timeout: nil)
+          def export(spans, options = {})
+            OpenTelemetry::Internal.validate_options(options, [:timeout])
+            _timeout = options.fetch(:timeout, nil)
             return FAILURE if @stopped
 
             Array(spans).each { |s| pp s }
@@ -24,11 +26,15 @@ module OpenTelemetry
             SUCCESS
           end
 
-          def force_flush(timeout: nil)
+          def force_flush(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:timeout])
+            _timeout = options.fetch(:timeout, nil)
             SUCCESS
           end
 
-          def shutdown(timeout: nil)
+          def shutdown(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:timeout])
+            _timeout = options.fetch(:timeout, nil)
             @stopped = true
             SUCCESS
           end

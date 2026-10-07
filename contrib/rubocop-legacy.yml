@@ -1,0 +1,60 @@
+inherit_from: rubocop.yml
+
+# RuboCop parses modern Ruby; the runtime matrix checks Ruby 1.9 syntax.
+# These suggestions introduce syntax or library calls absent on legacy Ruby.
+
+Style/SymbolArray:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/SafeNavigation:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/UnpackFirst:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/ArgumentsForwarding:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Naming/BlockForwarding:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/PredicateWithKind:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Performance/RedundantEqualityComparisonBlock:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/RedundantBegin:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/RedundantInterpolationUnfreeze:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/SlicingWithRange:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/BitwisePredicate:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Style/HashConversion:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+Lint/RedundantRequireStatement:
+  Exclude:
+    - "**/lib/**/*.rb"
+
+# The lint parser minimum differs from the supported interpreter minimum.
+Gemspec/RequiredRubyVersion:
+  Enabled: false

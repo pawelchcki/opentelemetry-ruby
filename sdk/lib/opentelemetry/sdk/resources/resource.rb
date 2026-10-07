@@ -24,7 +24,7 @@ module OpenTelemetry
               raise ArgumentError, 'attribute keys must be strings' unless k.is_a?(String)
               raise ArgumentError, 'attribute values must be (array of) strings, integers, floats, or booleans' unless Internal.valid_value?(v)
 
-              memo[-k] = v.freeze
+              memo[k.dup.freeze] = v.freeze
             end.freeze
 
             new(frozen_attributes)

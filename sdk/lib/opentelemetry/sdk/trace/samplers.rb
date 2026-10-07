@@ -54,23 +54,24 @@ module OpenTelemetry
         # | present | false | true | local_parent_sampled |
         # | present | false | false | local_parent_not_sampled |
         #
-        # @param [Sampler] root The sampler to which the sampling
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        # @option options [Sampler] root The sampler to which the sampling
         #   decision is delegated for spans with no parent (root spans).
-        # @param [optional Sampler] remote_parent_sampled The sampler to which the sampling
+        # @option options [Sampler] remote_parent_sampled The sampler to which the sampling
         #   decision is delegated for remote parent sampled spans. Defaults to ALWAYS_ON.
-        # @param [optional Sampler] remote_parent_not_sampled The sampler to which the sampling
+        # @option options [Sampler] remote_parent_not_sampled The sampler to which the sampling
         #   decision is delegated for remote parent not sampled spans. Defaults to ALWAYS_OFF.
-        # @param [optional Sampler] local_parent_sampled The sampler to which the sampling
+        # @option options [Sampler] local_parent_sampled The sampler to which the sampling
         #   decision is delegated for local parent sampled spans. Defaults to ALWAYS_ON.
-        # @param [optional Sampler] local_parent_not_sampled The sampler to which the sampling
+        # @option options [Sampler] local_parent_not_sampled The sampler to which the sampling
         #   decision is delegated for local parent not sampld spans. Defaults to ALWAYS_OFF.
-        def self.parent_based(
-          root:,
-          remote_parent_sampled: ALWAYS_ON,
-          remote_parent_not_sampled: ALWAYS_OFF,
-          local_parent_sampled: ALWAYS_ON,
-          local_parent_not_sampled: ALWAYS_OFF
-        )
+        def self.parent_based(options = {})
+          OpenTelemetry::Internal.validate_options(options, [:root, :remote_parent_sampled, :remote_parent_not_sampled, :local_parent_sampled, :local_parent_not_sampled], [:root])
+          root = options.fetch(:root)
+          remote_parent_sampled = options.fetch(:remote_parent_sampled) { ALWAYS_ON }
+          remote_parent_not_sampled = options.fetch(:remote_parent_not_sampled) { ALWAYS_OFF }
+          local_parent_sampled = options.fetch(:local_parent_sampled) { ALWAYS_ON }
+          local_parent_not_sampled = options.fetch(:local_parent_not_sampled) { ALWAYS_OFF }
           ParentBased.new(root, remote_parent_sampled, remote_parent_not_sampled, local_parent_sampled, local_parent_not_sampled)
         end
 

@@ -1,0 +1,18 @@
+module(
+    name = "opentelemetry_ruby_legacy",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "rules_stests", version = "0.0.0")
+bazel_dep(name = "rules_shell", version = "0.8.0")
+bazel_dep(name = "platforms", version = "1.1.0")
+
+git_override(
+    module_name = "rules_stests",
+    commit = "402ce4e9eeb9dab79d20ad11b7967c2604ca39a2",
+    remote = "https://github.com/pawelchcki/rules_stests.git",
+)
+
+minitest_repository = use_repo_rule("//verification:dependencies.bzl", "minitest_repository")
+
+minitest_repository(name = "legacy_minitest")

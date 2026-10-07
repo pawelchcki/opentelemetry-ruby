@@ -1,5 +1,9 @@
 # OpenTelemetry::SemanticConventions
 
+The fork's `legacy-support` branch supports MRI Ruby 1.9.3 and later for this
+gem. See [legacy support and verification](../verification/README.md) for
+installation instructions and the Linux runtime matrix.
+
 The `opentelemetry-semantic_conventions` gem provides auto-generated constants
 that represent the OpenTelemetry [Semantic Conventions][semantic-conventions].
 

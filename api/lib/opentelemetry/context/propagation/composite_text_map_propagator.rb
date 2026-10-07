@@ -19,9 +19,13 @@ module OpenTelemetry
           # Returns a Propagator that extracts using the provided extractors
           # and injectors.
           #
-          # @param [Array<#inject, #fields>] injectors An array of text map injectors
-          # @param [Array<#extract>] extractors An array of text map extractors
-          def compose(injectors:, extractors:)
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+          # @option options [Array<#inject, #fields>] injectors An array of text map injectors
+          # @option options [Array<#extract>] extractors An array of text map extractors
+          def compose(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:injectors, :extractors], [:injectors, :extractors])
+            injectors = options.fetch(:injectors)
+            extractors = options.fetch(:extractors)
             raise ArgumentError, 'injectors and extractors must both be non-nil arrays' unless injectors.is_a?(Array) && extractors.is_a?(Array)
 
             new(injectors: injectors, extractors: extractors)
@@ -40,8 +44,13 @@ module OpenTelemetry
           end
         end
 
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @api private
-        def initialize(injectors: nil, extractors: nil, propagators: nil)
+        def initialize(options = {})
+          OpenTelemetry::Internal.validate_options(options, [:injectors, :extractors, :propagators])
+          injectors = options.fetch(:injectors, nil)
+          extractors = options.fetch(:extractors, nil)
+          propagators = options.fetch(:propagators, nil)
           @injectors = injectors
           @extractors = extractors
           @propagators = propagators
@@ -50,18 +59,24 @@ module OpenTelemetry
         # Runs injectors or propagators in order. If an injection fails
         # a warning will be logged and remaining injectors will be executed.
         #
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @param [Object] carrier A mutable carrier to inject context into.
-        # @param [optional Context] context Context to be injected into carrier. Defaults
+        # @option options [Context] context Context to be injected into carrier. Defaults
         #   to +Context.current+.
-        # @param [optional Setter] setter If the optional setter is provided, it
+        # @option options [Setter] setter If the optional setter is provided, it
         #   will be used to write context into the carrier, otherwise the default
         #   setter will be used.
-        def inject(carrier, context: Context.current, setter: Context::Propagation.text_map_setter)
+        def inject(carrier, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:context, :setter])
+          context = options.fetch(:context) { Context.current }
+          setter = options.fetch(:setter) { Context::Propagation.text_map_setter }
           injectors = @injectors || @propagators
           injectors.each do |injector|
-            injector.inject(carrier, context: context, setter: setter)
-          rescue StandardError => e
-            OpenTelemetry.logger.warn "Error in CompositePropagator#inject #{e.message}"
+            begin
+              injector.inject(carrier, context: context, setter: setter)
+            rescue StandardError => e
+              OpenTelemetry.logger.warn "Error in CompositePropagator#inject #{e.message}"
+            end
           end
           nil
         end
@@ -71,22 +86,28 @@ module OpenTelemetry
         # will be logged and remaining extractors will continue to be executed. Always
         # returns a valid context.
         #
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @param [Object] carrier The carrier to extract context from.
-        # @param [optional Context] context Context to be updated with the state
+        # @option options [Context] context Context to be updated with the state
         #   extracted from the carrier. Defaults to +Context.current+.
-        # @param [optional Getter] getter If the optional getter is provided, it
+        # @option options [Getter] getter If the optional getter is provided, it
         #   will be used to read the header from the carrier, otherwise the default
         #   getter will be used.
         #
         # @return [Context] a new context updated with state extracted from the
         #   carrier
-        def extract(carrier, context: Context.current, getter: Context::Propagation.text_map_getter)
+        def extract(carrier, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:context, :getter])
+          context = options.fetch(:context) { Context.current }
+          getter = options.fetch(:getter) { Context::Propagation.text_map_getter }
           extractors = @extractors || @propagators
           extractors.inject(context) do |ctx, extractor|
-            extractor.extract(carrier, context: ctx, getter: getter)
-          rescue StandardError => e
-            OpenTelemetry.logger.warn "Error in CompositePropagator#extract #{e.message}"
-            ctx
+            begin
+              extractor.extract(carrier, context: ctx, getter: getter)
+            rescue StandardError => e
+              OpenTelemetry.logger.warn "Error in CompositePropagator#extract #{e.message}"
+              ctx
+            end
           end
         end
 

@@ -10,6 +10,10 @@
 
 The Ruby [OpenTelemetry](https://opentelemetry.io/) client.
 
+This fork’s `legacy-support` branch backports the core trace SDK to MRI Ruby
+1.9.3. See [legacy support and verification](verification/README.md) for install
+instructions, the runtime matrix, and component coverage.
+
 - [Getting Started][getting-started]
 - [Contributing](#contributing)
 - [Contrib Repository](#contrib-repository)

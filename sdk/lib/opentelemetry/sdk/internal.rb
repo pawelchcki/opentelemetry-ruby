@@ -21,7 +21,7 @@ module OpenTelemetry
       end
 
       def numeric?(value)
-        value.instance_of?(Integer) || value.instance_of?(Float)
+        value.is_a?(Integer) || value.instance_of?(Float)
       end
 
       def valid_simple_value?(value)
@@ -34,7 +34,7 @@ module OpenTelemetry
 
         case value.first
         when String
-          value.all?(String)
+          value.all? { |item| item.is_a?(String) }
         when TrueClass, FalseClass
           value.all? { |v| boolean?(v) }
         when Numeric

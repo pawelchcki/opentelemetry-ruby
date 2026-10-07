@@ -10,59 +10,42 @@ module OpenTelemetry
     # with an ERROR log level, only OpenTelemetry logs at the ERROR level or higher
     # will be emitted.
     class ForwardingLogger
-      def initialize(logger, level:)
+      def initialize(logger, options = {})
+        OpenTelemetry::Internal.validate_options(options, [:level], [:level])
+        level = options.fetch(:level)
         @logger = logger
 
-        if level.is_a?(Integer)
-          @level = level
-        else
-          case level.to_s.downcase
-          when 'debug'
-            @level = Logger::DEBUG
-          when 'info'
-            @level = Logger::INFO
-          when 'warn'
-            @level = Logger::WARN
-          when 'error'
-            @level = Logger::ERROR
-          when 'fatal'
-            @level = Logger::FATAL
-          when 'unknown'
-            @level = Logger::UNKNOWN
-          else
-            raise ArgumentError, "invalid log level: #{level}"
-          end
-        end
+        @level = OpenTelemetry::Internal.log_level(level)
       end
 
-      def add(severity, message = nil, progname = nil, &)
+      def add(severity, message = nil, progname = nil, &block)
         return true if severity < @level
 
-        @logger.add(severity, message, progname, &)
+        @logger.add(severity, message, progname, &block)
       end
 
-      def debug(progname = nil, &)
-        add(Logger::DEBUG, nil, progname, &)
+      def debug(progname = nil, &block)
+        add(Logger::DEBUG, nil, progname, &block)
       end
 
-      def info(progname = nil, &)
-        add(Logger::INFO, nil, progname, &)
+      def info(progname = nil, &block)
+        add(Logger::INFO, nil, progname, &block)
       end
 
-      def warn(progname = nil, &)
-        add(Logger::WARN, nil, progname, &)
+      def warn(progname = nil, &block)
+        add(Logger::WARN, nil, progname, &block)
       end
 
-      def error(progname = nil, &)
-        add(Logger::ERROR, nil, progname, &)
+      def error(progname = nil, &block)
+        add(Logger::ERROR, nil, progname, &block)
       end
 
-      def fatal(progname = nil, &)
-        add(Logger::FATAL, nil, progname, &)
+      def fatal(progname = nil, &block)
+        add(Logger::FATAL, nil, progname, &block)
       end
 
-      def unknown(progname = nil, &)
-        add(Logger::UNKNOWN, nil, progname, &)
+      def unknown(progname = nil, &block)
+        add(Logger::UNKNOWN, nil, progname, &block)
       end
     end
   end

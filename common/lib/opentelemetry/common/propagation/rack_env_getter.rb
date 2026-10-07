@@ -29,7 +29,7 @@ module OpenTelemetry
         private
 
         def to_rack_key(key)
-          ret = "HTTP_#{key}"
+          ret = "HTTP_#{key}".dup
           ret.tr!('-', '_')
           ret.upcase!
           ret
@@ -37,7 +37,7 @@ module OpenTelemetry
 
         def from_rack_key(key)
           start = key.start_with?('HTTP_') ? 5 : 0
-          ret = key[start..]
+          ret = key[start..-1]
           ret.tr!('_', '-')
           ret.downcase!
           ret

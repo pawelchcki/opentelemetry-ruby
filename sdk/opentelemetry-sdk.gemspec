@@ -4,13 +4,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-lib = File.expand_path('lib', __dir__)
+lib = File.expand_path('lib', File.dirname(__FILE__))
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'opentelemetry/sdk/version'
 
 Gem::Specification.new do |spec|
   spec.name        = 'opentelemetry-sdk'
-  spec.version     = OpenTelemetry::SDK::VERSION
+  spec.version     = OpenTelemetry::SDK::VERSION.dup
   spec.authors     = ['OpenTelemetry Authors']
   spec.email       = ['cncf-opentelemetry-contributors@lists.cncf.io']
 
@@ -23,9 +23,10 @@ Gem::Specification.new do |spec|
                ::Dir.glob('*.md') +
                ['LICENSE', '.yardopts']
   spec.require_paths = ['lib']
-  spec.required_ruby_version = '>= 3.3'
+  spec.required_ruby_version = '>= 1.9.3'
 
-  spec.add_dependency 'logger'
+  # Logger 1.3.0 declares Ruby >= 0 but contains Ruby 2.3-only syntax.
+  spec.add_dependency 'logger', '>= 1.2.8.1', '!= 1.3.0'
   spec.add_dependency 'opentelemetry-api', '~> 1.1'
   spec.add_dependency 'opentelemetry-common', '~> 0.20'
   spec.add_dependency 'opentelemetry-registry', '~> 0.2'

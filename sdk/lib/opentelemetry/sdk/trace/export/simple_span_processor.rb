@@ -57,7 +57,7 @@ module OpenTelemetry
           def on_finish(span)
             return unless span.context.trace_flags.sampled?
 
-            @span_exporter&.export([span.to_span_data])
+            @span_exporter.export([span.to_span_data]) if @span_exporter
           rescue => e # rubocop:disable Style/RescueStandardError
             OpenTelemetry.handle_error(exception: e, message: 'unexpected error in span.on_finish')
           end
@@ -70,20 +70,26 @@ module OpenTelemetry
           # the process after an invocation, but before the `Processor` exports
           # the completed spans.
           #
-          # @param [optional Numeric] timeout An optional timeout in seconds.
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+          # @option options [Numeric] timeout An optional timeout in seconds.
           # @return [Integer] SUCCESS if no error occurred, FAILURE if a
           #   non-specific failure occurred, TIMEOUT if a timeout occurred.
-          def force_flush(timeout: nil)
-            @span_exporter&.force_flush(timeout: timeout) || SUCCESS
+          def force_flush(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:timeout])
+            timeout = options.fetch(:timeout, nil)
+            (@span_exporter && @span_exporter.force_flush(timeout: timeout)) || SUCCESS
           end
 
           # Called when {TracerProvider#shutdown} is called.
           #
-          # @param [optional Numeric] timeout An optional timeout in seconds.
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+          # @option options [Numeric] timeout An optional timeout in seconds.
           # @return [Integer] SUCCESS if no error occurred, FAILURE if a
           #   non-specific failure occurred, TIMEOUT if a timeout occurred.
-          def shutdown(timeout: nil)
-            @span_exporter&.shutdown(timeout: timeout) || SUCCESS
+          def shutdown(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:timeout])
+            timeout = options.fetch(:timeout, nil)
+            (@span_exporter && @span_exporter.shutdown(timeout: timeout)) || SUCCESS
           end
         end
       end

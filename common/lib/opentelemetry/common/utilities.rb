@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 require 'uri'
+require 'opentelemetry/common/clock'
 
 module OpenTelemetry
   module Common
@@ -30,7 +31,9 @@ module OpenTelemetry
         return nil if timeout.nil?
 
         timeout -= (timeout_timestamp - start_time)
-        timeout.positive? ? timeout : 0
+        return 0 unless timeout > 0
+
+        timeout
       end
 
       # Returns a timestamp suitable to pass as the start_time
@@ -39,7 +42,7 @@ module OpenTelemetry
       #
       # @return [Numeric]
       def timeout_timestamp
-        Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        Clock.monotonic_nanoseconds / 1_000_000_000.0
       end
 
       # Converts the provided timestamp to nanosecond integer
@@ -52,12 +55,16 @@ module OpenTelemetry
 
       # Encodes a string in utf8
       #
+      # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
       # @param [String] string The string to be utf8 encoded
-      # @param [optional boolean] binary This option is for displaying binary data
-      # @param [String, nil] placeholder The fallback value to be used if encoding fails
+      # @option options [boolean] binary This option is for displaying binary data
+      # @option options [String, nil] placeholder The fallback value to be used if encoding fails
       #
       # @return [String, nil]
-      def utf8_encode(string, binary: false, placeholder: STRING_PLACEHOLDER)
+      def utf8_encode(string, options = {})
+        OpenTelemetry::Internal.validate_options(options, [:binary, :placeholder])
+        binary = options.fetch(:binary, false)
+        placeholder = options.fetch(:placeholder) { STRING_PLACEHOLDER }
         string = string.to_s
 
         if binary
@@ -78,6 +85,19 @@ module OpenTelemetry
         OpenTelemetry.logger.debug("Error encoding string in UTF-8: #{e}")
 
         placeholder
+      end
+
+      # Formats exception details as UTF-8 on both legacy and modern Ruby.
+      #
+      # @param [Exception] exception
+      # @return [String]
+      def exception_stacktrace(exception)
+        stacktrace = if exception.respond_to?(:full_message)
+                       exception.full_message(highlight: false, order: :top)
+                     else
+                       ["#{exception.class}: #{exception.message}", *Array(exception.backtrace)].join("\n")
+                     end
+        stacktrace.encode('UTF-8', invalid: :replace, undef: :replace, replace: "\uFFFD")
       end
 
       # Truncates a string if it exceeds the size provided.
@@ -139,11 +159,14 @@ module OpenTelemetry
       # or the default value if provided.
       #
       # @param [String] env_vars The environment variable(s) to retrieve
-      # @param default The fallback value to return if the requested
-      #  env var(s) are not present
+      # @note A final options Hash may contain :default, the fallback value
+      #   when none of the requested environment variables are present.
       #
       # @return [String]
-      def config_opt(*env_vars, default: nil)
+      def config_opt(*env_vars)
+        options = env_vars.last.is_a?(Hash) ? env_vars.pop : {}
+        OpenTelemetry::Internal.validate_options(options, [:default])
+        default = options.fetch(:default, nil)
         ENV.values_at(*env_vars).compact.fetch(0, default)
       end
 
@@ -163,7 +186,7 @@ module OpenTelemetry
 
       # Returns true if exporter is a valid exporter.
       def valid_exporter?(exporter)
-        exporter && %i[export shutdown force_flush].all? { |m| exporter.respond_to?(m) }
+        exporter && [:export, :shutdown, :force_flush].all? { |m| exporter.respond_to?(m) }
       end
     end
   end

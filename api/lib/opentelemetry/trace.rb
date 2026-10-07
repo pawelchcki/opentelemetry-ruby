@@ -4,6 +4,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+require 'securerandom'
+
 module OpenTelemetry
   # The Trace API allows recording a set of events, triggered as a result of a
   # single logical operation, consolidated across various components of an
@@ -16,18 +18,18 @@ module OpenTelemetry
     private_constant :CURRENT_SPAN_KEY
 
     # An invalid trace identifier, a 16-byte string with all zero bytes.
-    INVALID_TRACE_ID = ("\0" * 16).b
+    INVALID_TRACE_ID = ("\0" * 16).force_encoding(Encoding::BINARY)
 
     # An invalid span identifier, an 8-byte string with all zero bytes.
-    INVALID_SPAN_ID = ("\0" * 8).b
+    INVALID_SPAN_ID = ("\0" * 8).force_encoding(Encoding::BINARY)
 
     # Generates a valid trace identifier, a 16-byte string with at least one
     # non-zero byte.
     #
     # @return [String] a valid trace ID.
     def generate_trace_id
-      id = Random.bytes(16)
-      id = Random.bytes(16) while id == INVALID_TRACE_ID
+      id = SecureRandom.random_bytes(16)
+      id = SecureRandom.random_bytes(16) while id == INVALID_TRACE_ID
       id
     end
 
@@ -36,8 +38,8 @@ module OpenTelemetry
     #
     # @return [String] a valid span ID.
     def generate_span_id
-      id = Random.bytes(8)
-      id = Random.bytes(8) while id == INVALID_SPAN_ID
+      id = SecureRandom.random_bytes(8)
+      id = SecureRandom.random_bytes(8) while id == INVALID_SPAN_ID
       id
     end
 
@@ -53,10 +55,13 @@ module OpenTelemetry
     # Returns a context containing the span, derived from the optional parent
     # context, or the current context if one was not provided.
     #
+    # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
     # @param [Span] span The span to store in the returned context.
-    # @param [Context] parent_context The optional context to use as the parent
+    # @option options [Context] parent_context The optional context to use as the parent
     #   for the returned context.
-    def context_with_span(span, parent_context: Context.current)
+    def context_with_span(span, options = {})
+      OpenTelemetry::Internal.validate_options(options, [:parent_context])
+      parent_context = options.fetch(:parent_context) { Context.current }
       parent_context.set_value(CURRENT_SPAN_KEY, span)
     end
 

@@ -18,7 +18,7 @@ module OpenTelemetry
         # Returns the attributes hash representing the HTTP client context found
         # in the optional context or the current context if none is provided.
         #
-        # @param [optional Context] context The context to lookup the current
+        # @option options [Context] parent_context The context to lookup the current
         #   attributes hash. Defaults to Context.current
         def attributes(context = nil)
           context ||= Context.current
@@ -28,9 +28,12 @@ module OpenTelemetry
         # Returns a context containing the merged attributes hash, derived from the
         # optional parent context, or the current context if one was not provided.
         #
-        # @param [optional Context] context The context to use as the parent for
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        # @option options [Context] parent_context The context to use as the parent for
         #   the returned context
-        def context_with_attributes(attributes_hash, parent_context: Context.current)
+        def context_with_attributes(attributes_hash, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:parent_context])
+          parent_context = options.fetch(:parent_context) { Context.current }
           attributes_hash = attributes(parent_context).merge(attributes_hash)
           parent_context.set_value(CURRENT_ATTRIBUTES_HASH, attributes_hash)
         end
@@ -41,7 +44,7 @@ module OpenTelemetry
         # On exit, the attributes hash that was active before calling this method
         # will be reactivated.
         #
-        # @param [Span] span the span to activate
+        # @param [Hash] attributes_hash The attributes to activate
         # @yield [Hash, Context] yields attributes hash and a context containing the
         #   attributes hash to the block.
         def with_attributes(attributes_hash)

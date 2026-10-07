@@ -70,8 +70,8 @@ module OpenTelemetry
       private
 
       def find_instrumentation(instrumentation_name)
-        @instrumentation.detect { |a| a.instance.name == instrumentation_name }
-                        &.instance
+        instrumentation = @instrumentation.detect { |a| a.instance.name == instrumentation_name }
+        instrumentation && instrumentation.instance
       end
 
       def install_instrumentation(instrumentation, config)

@@ -15,19 +15,20 @@ module OpenTelemetry
 
       # Returns a new {SpanContext}.
       #
-      # @param [optional String] trace_id The trace ID associated with a {Span}.
-      # @param [optional String] span_id The span ID associated with a {Span}.
-      # @param [optional TraceFlags] trace_flags The trace flags associated with a {Span}.
-      # @param [optional Tracestate] tracestate The tracestate associated with a {Span}. May be nil.
-      # @param [optional Boolean] remote Whether the {SpanContext} was extracted from the wire.
+      # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+      # @option options [String] trace_id The trace ID associated with a {Span}.
+      # @option options [String] span_id The span ID associated with a {Span}.
+      # @option options [TraceFlags] trace_flags The trace flags associated with a {Span}.
+      # @option options [Tracestate] tracestate The tracestate associated with a {Span}. May be nil.
+      # @option options [Boolean] remote Whether the {SpanContext} was extracted from the wire.
       # @return [SpanContext]
-      def initialize(
-        trace_id: Trace.generate_trace_id,
-        span_id: Trace.generate_span_id,
-        trace_flags: TraceFlags::DEFAULT,
-        tracestate: Tracestate::DEFAULT,
-        remote: false
-      )
+      def initialize(options = {})
+        OpenTelemetry::Internal.validate_options(options, [:trace_id, :span_id, :trace_flags, :tracestate, :remote])
+        trace_id = options.fetch(:trace_id) { Trace.generate_trace_id }
+        span_id = options.fetch(:span_id) { Trace.generate_span_id }
+        trace_flags = options.fetch(:trace_flags) { TraceFlags::DEFAULT }
+        tracestate = options.fetch(:tracestate) { Tracestate::DEFAULT }
+        remote = options.fetch(:remote, false)
         @trace_id = trace_id
         @span_id = span_id
         @trace_flags = trace_flags
@@ -39,14 +40,14 @@ module OpenTelemetry
       #
       # @return [String] A 32-hex-character lowercase string.
       def hex_trace_id
-        @trace_id.unpack1('H*')
+        @trace_id.unpack('H*').first
       end
 
       # Returns the lowercase [hex encoded](https://tools.ietf.org/html/rfc4648#section-8) span ID.
       #
       # @return [String] A 16-hex-character lowercase string.
       def hex_span_id
-        @span_id.unpack1('H*')
+        @span_id.unpack('H*').first
       end
 
       # Returns the binary representation of the trace ID.

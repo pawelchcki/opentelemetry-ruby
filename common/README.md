@@ -1,5 +1,9 @@
 # Opentelemetry::Common
 
+The fork's `legacy-support` branch supports MRI Ruby 1.9.3 and later for this
+gem. See [legacy support and verification](../verification/README.md) for
+installation instructions and the Linux runtime matrix.
+
 The `opentelemetry-common` gem provides common helpers for OpenTelemetry.
 
 ## What is OpenTelemetry?

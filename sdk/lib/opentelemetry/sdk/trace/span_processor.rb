@@ -58,19 +58,25 @@ module OpenTelemetry
         # the process after an invocation, but before the `Processor` exports
         # the completed spans.
         #
-        # @param [optional Numeric] timeout An optional timeout in seconds.
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        # @option options [Numeric] timeout An optional timeout in seconds.
         # @return [Integer] Export::SUCCESS if no error occurred, Export::FAILURE if
         #   a non-specific failure occurred, Export::TIMEOUT if a timeout occurred.
-        def force_flush(timeout: nil)
+        def force_flush(options = {})
+          OpenTelemetry::Internal.validate_options(options, [:timeout])
+          _timeout = options.fetch(:timeout, nil)
           Export::SUCCESS
         end
 
         # Called when {TracerProvider#shutdown} is called.
         #
-        # @param [optional Numeric] timeout An optional timeout in seconds.
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        # @option options [Numeric] timeout An optional timeout in seconds.
         # @return [Integer] Export::SUCCESS if no error occurred, Export::FAILURE if
         #   a non-specific failure occurred, Export::TIMEOUT if a timeout occurred.
-        def shutdown(timeout: nil)
+        def shutdown(options = {})
+          OpenTelemetry::Internal.validate_options(options, [:timeout])
+          _timeout = options.fetch(:timeout, nil)
           Export::SUCCESS
         end
       end

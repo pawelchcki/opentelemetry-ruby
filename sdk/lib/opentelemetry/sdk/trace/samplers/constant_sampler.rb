@@ -14,7 +14,10 @@ module OpenTelemetry
         class ConstantSampler
           attr_reader :description
 
-          def initialize(decision:, description:)
+          def initialize(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:decision, :description], [:decision, :description])
+            decision = options.fetch(:decision)
+            description = options.fetch(:description)
             @decision = decision
             @description = description
           end
@@ -23,10 +26,18 @@ module OpenTelemetry
             @decision == other.decision && @description == other.description
           end
 
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
           # @api private
           #
           # See {Samplers}.
-          def should_sample?(trace_id:, parent_context:, links:, name:, kind:, attributes:)
+          def should_sample?(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:trace_id, :parent_context, :links, :name, :kind, :attributes], [:trace_id, :parent_context, :links, :name, :kind, :attributes])
+            _trace_id = options.fetch(:trace_id)
+            parent_context = options.fetch(:parent_context)
+            _links = options.fetch(:links)
+            _name = options.fetch(:name)
+            _kind = options.fetch(:kind)
+            _attributes = options.fetch(:attributes)
             Result.new(decision: @decision, tracestate: OpenTelemetry::Trace.current_span(parent_context).context.tracestate)
           end
 

@@ -1,0 +1,17 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "trace_sdk_sources",
+    srcs = glob([
+        "api/lib/**/*.rb",
+        "common/lib/**/*.rb",
+        "registry/lib/**/*.rb",
+        "sdk/lib/**/*.rb",
+        "semantic_conventions/lib/**/*.rb",
+        "api/*.gemspec",
+        "common/*.gemspec",
+        "registry/*.gemspec",
+        "sdk/*.gemspec",
+        "semantic_conventions/*.gemspec",
+    ]),
+)

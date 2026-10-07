@@ -23,12 +23,16 @@ module OpenTelemetry
 
         # Inject in-process baggage into the supplied carrier.
         #
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @param [Carrier] carrier The mutable carrier to inject baggage into
-        # @param [Context] context The context to read baggage from
-        # @param [optional Setter] setter If the optional setter is provided, it
+        # @option options [Context] context The context to read baggage from
+        # @option options [Setter] setter If the optional setter is provided, it
         #   will be used to write context into the carrier, otherwise the default
         #   text map setter will be used.
-        def inject(carrier, context: Context.current, setter: Context::Propagation.text_map_setter)
+        def inject(carrier, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:context, :setter])
+          context = options.fetch(:context) { Context.current }
+          setter = options.fetch(:setter) { Context::Propagation.text_map_setter }
           baggage = OpenTelemetry::Baggage.raw_entries(context: context)
 
           return if baggage.nil? || baggage.empty?
@@ -42,16 +46,20 @@ module OpenTelemetry
         # If extraction fails or there is no baggage to extract,
         # then the original context will be returned
         #
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @param [Carrier] carrier The carrier to get the header from
-        # @param [optional Context] context Context to be updated with the baggage
+        # @option options [Context] context Context to be updated with the baggage
         #   extracted from the carrier. Defaults to +Context.current+.
-        # @param [optional Getter] getter If the optional getter is provided, it
+        # @option options [Getter] getter If the optional getter is provided, it
         #   will be used to read the header from the carrier, otherwise the default
         #   text map getter will be used.
         #
         # @return [Context] context updated with extracted baggage, or the original context
         #   if extraction fails
-        def extract(carrier, context: Context.current, getter: Context::Propagation.text_map_getter)
+        def extract(carrier, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:context, :getter])
+          context = options.fetch(:context) { Context.current }
+          getter = options.fetch(:getter) { Context::Propagation.text_map_getter }
           header = getter.get(carrier, BAGGAGE_KEY)
           return context if header.nil? || header.empty?
 

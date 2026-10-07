@@ -28,8 +28,11 @@ module OpenTelemetry
 
       # Spans must be created using {Tracer}. This is for internal use only.
       #
+      # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
       # @api private
-      def initialize(span_context: nil)
+      def initialize(options = {})
+        OpenTelemetry::Internal.validate_options(options, [:span_context])
+        span_context = options.fetch(:span_context, nil)
         @context = span_context || SpanContext.new
       end
 
@@ -111,29 +114,36 @@ module OpenTelemetry
       # documents} certain "standard event names and keys" which have
       # prescribed semantic meanings.
       #
+      # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
       # @param [String] name Name of the event.
-      # @param [optional Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}]
-      #   attributes One or more key:value pairs, where the keys must be
+      # @option options [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes One or more key:value pairs, where the keys must be
       #   strings and the values may be (array of) string, boolean or numeric
       #   type.
-      # @param [optional Time] timestamp Optional timestamp for the event.
+      # @option options [Time] timestamp Optional timestamp for the event.
       #
       # @return [self] returns itself
-      def add_event(name, attributes: nil, timestamp: nil)
+      def add_event(name, options = {})
+        OpenTelemetry::Internal.validate_options(options, [:attributes, :timestamp])
+        _attributes = options.fetch(:attributes, nil)
+        _timestamp = options.fetch(:timestamp, nil)
         self
       end
 
       # Record an exception during the execution of this span. Multiple exceptions
       # can be recorded on a span.
       #
+      # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
       # @param [Exception] exception The exception to recorded
-      # @param [optional Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}]
-      #   attributes One or more key:value pairs, where the keys must be
+      # @option options [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes One or more key:value pairs, where the keys must be
       #   strings and the values may be (array of) string, boolean or numeric
       #   type.
       #
       # @return [void]
-      def record_exception(exception, attributes: nil); end
+      def record_exception(exception, options = {})
+        OpenTelemetry::Internal.validate_options(options, [:attributes])
+        _attributes = options.fetch(:attributes, nil)
+        nil
+      end
 
       # Sets the Status to the Span
       #
@@ -170,10 +180,13 @@ module OpenTelemetry
       #
       # This API MUST be non-blocking.
       #
-      # @param [Time] end_timestamp optional end timestamp for the span.
+      # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+      # @option options [Time] end_timestamp optional end timestamp for the span.
       #
       # @return [self] returns itself
-      def finish(end_timestamp: nil)
+      def finish(options = {})
+        OpenTelemetry::Internal.validate_options(options, [:end_timestamp])
+        _end_timestamp = options.fetch(:end_timestamp, nil)
         self
       end
 

@@ -5,6 +5,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 require 'logger'
+require 'fiber'
+require 'opentelemetry/internal/options'
 
 require 'opentelemetry/error'
 require 'opentelemetry/context'
@@ -28,7 +30,11 @@ module OpenTelemetry
 
   # @return [Object, Logger] configured Logger or a default STDOUT Logger.
   def logger
-    @logger ||= Logger.new($stdout, level: ENV['OTEL_LOG_LEVEL'] || Logger::INFO)
+    @logger ||= begin
+      logger = Logger.new($stdout)
+      logger.level = Internal.log_level(ENV['OTEL_LOG_LEVEL'] || Logger::INFO)
+      logger
+    end
   end
 
   # Configures error handler used by {handle_error}.
@@ -49,14 +55,24 @@ module OpenTelemetry
   # @return [Callable] configured error handler or a default that logs the
   #   exception and message at ERROR level.
   def error_handler
-    @error_handler ||= ->(exception: nil, message: nil) { logger.error("OpenTelemetry error: #{[message, exception&.message, exception&.backtrace&.first].compact.join(' - ')}") }
+    @error_handler ||= lambda do |options = {}|
+      Internal.validate_options(options, [:exception, :message])
+      exception = options[:exception]
+      message = options[:message]
+      details = [message, exception && exception.message, exception && exception.backtrace && exception.backtrace.first]
+      logger.error("OpenTelemetry error: #{details.compact.join(' - ')}")
+    end
   end
 
   # Handles an error by calling the configured error_handler.
   #
-  # @param [optional Exception] exception The exception to be handled
-  # @param [optional String] message An error message.
-  def handle_error(exception: nil, message: nil)
+  # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+  # @option options [Exception] exception The exception to be handled
+  # @option options [String] message An error message.
+  def handle_error(options = {})
+    OpenTelemetry::Internal.validate_options(options, [:exception, :message])
+    exception = options.fetch(:exception, nil)
+    message = options.fetch(:message, nil)
     error_handler.call(exception: exception, message: message)
   end
 

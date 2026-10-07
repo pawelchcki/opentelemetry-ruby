@@ -25,13 +25,17 @@ module OpenTelemetry
         # Injects the provided context into a carrier using the underlying
         # injector. Logs a warning if injection fails.
         #
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @param [Object] carrier A mutable carrier to inject context into.
-        # @param [optional Context] context Context to be injected into carrier. Defaults
+        # @option options [Context] context Context to be injected into carrier. Defaults
         #   to +Context.current+.
-        # @param [optional Setter] setter If the optional setter is provided, it
+        # @option options [Setter] setter If the optional setter is provided, it
         #   will be used to write context into the carrier, otherwise the default
         #   setter will be used.
-        def inject(carrier, context: Context.current, setter: Context::Propagation.text_map_setter)
+        def inject(carrier, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:context, :setter])
+          context = options.fetch(:context) { Context.current }
+          setter = options.fetch(:setter) { Context::Propagation.text_map_setter }
           @injector.inject(carrier, context, setter)
           nil
         rescue StandardError => e
@@ -42,16 +46,20 @@ module OpenTelemetry
         # Extracts and returns context from a carrier. Returns the provided
         # context and logs a warning if an error if extraction fails.
         #
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @param [Object] carrier The carrier to extract context from.
-        # @param [optional Context] context Context to be updated with the state
+        # @option options [Context] context Context to be updated with the state
         #   extracted from the carrier. Defaults to +Context.current+.
-        # @param [optional Getter] getter If the optional getter is provided, it
+        # @option options [Getter] getter If the optional getter is provided, it
         #   will be used to read the header from the carrier, otherwise the default
         #   getter will be used.
         #
         # @return [Context] a new context updated with state extracted from the
         #   carrier
-        def extract(carrier, context: Context.current, getter: Context::Propagation.text_map_getter)
+        def extract(carrier, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:context, :getter])
+          context = options.fetch(:context) { Context.current }
+          getter = options.fetch(:getter) { Context::Propagation.text_map_getter }
           @extractor.extract(carrier, context, getter)
         rescue StandardError => e
           OpenTelemetry.logger.warn "Error in Propagator#extract #{e.message}"

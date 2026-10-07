@@ -23,7 +23,9 @@ module OpenTelemetry
           @legacy_provider = legacy_provider
         end
 
-        def tracer(name = nil, version = nil, attributes: nil)
+        def tracer(name = nil, version = nil, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:attributes])
+          _attributes = options.fetch(:attributes, nil)
           @legacy_provider.tracer(name, version)
         end
       end
@@ -65,13 +67,25 @@ module OpenTelemetry
       # When both positional and keyword arguments are provided for the same
       # parameter, the keyword argument takes precedence.
       #
-      # @param [String] name Instrumentation scope name
-      # @param [String] version Instrumentation scope version
-      # @param [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes
+      # @option options [String] name Instrumentation scope name
+      # @option options [String] version Instrumentation scope version
+      # @option options [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes
       #   Instrumentation scope attributes
       #
       # @return [Tracer]
-      def tracer(deprecated_name = nil, deprecated_version = nil, name: nil, version: nil, attributes: nil)
+      # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+      def tracer(deprecated_name = nil, deprecated_version = nil, options = {})
+        if deprecated_version.is_a?(Hash)
+          options = deprecated_version
+          deprecated_version = nil
+        elsif deprecated_name.is_a?(Hash)
+          options = deprecated_name
+          deprecated_name = nil
+        end
+        OpenTelemetry::Internal.validate_options(options, [:name, :version, :attributes])
+        name = options.fetch(:name, nil)
+        version = options.fetch(:version, nil)
+        attributes = options.fetch(:attributes, nil)
         name ||= deprecated_name
         version ||= deprecated_version
         @mutex.synchronize do
@@ -84,8 +98,9 @@ module OpenTelemetry
       private
 
       def supports_attributes?(provider)
+        attribute_parameters = [:attributes, :options]
         provider.respond_to?(:tracer) &&
-          provider.method(:tracer).parameters.any? { |_, n| n == :attributes }
+          provider.method(:tracer).parameters.any? { |_, n| attribute_parameters.include?(n) }
       end
     end
   end

@@ -108,7 +108,7 @@ module OpenTelemetry
           # converts this object into a string according to the w3c spec
           # @return [String] the serialized trace_parent
           def to_s
-            "00-#{trace_id.unpack1('H*')}-#{span_id.unpack1('H*')}-#{flag_string}"
+            "00-#{trace_id.unpack('H*').first}-#{span_id.unpack('H*').first}-#{flag_string}"
           end
 
           private
@@ -119,7 +119,12 @@ module OpenTelemetry
             flags.sampled? ? '01' : '00'
           end
 
-          def initialize(trace_id: nil, span_id: nil, version: SUPPORTED_VERSION, flags: Trace::TraceFlags::DEFAULT)
+          def initialize(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:trace_id, :span_id, :version, :flags])
+            trace_id = options.fetch(:trace_id, nil)
+            span_id = options.fetch(:span_id, nil)
+            version = options.fetch(:version) { SUPPORTED_VERSION }
+            flags = options.fetch(:flags) { Trace::TraceFlags::DEFAULT }
             @trace_id = trace_id
             @span_id = span_id
             @version = version

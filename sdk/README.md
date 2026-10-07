@@ -1,5 +1,9 @@
 # opentelemetry-sdk
 
+The fork's `legacy-support` branch supports MRI Ruby 1.9.3 and later for this
+gem. See [legacy support and verification](../verification/README.md) for
+installation instructions and the Linux runtime matrix.
+
 The `opentelemetry-sdk` gem provides the reference implementation of the OpenTelemetry Ruby API. Using `opentelemetry-sdk`, an application can collect, analyze, and export telemetry data such as distributed traces and metrics.
 
 ## What is OpenTelemetry?

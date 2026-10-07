@@ -75,6 +75,8 @@ words:
   - artipacked
   - autocorrection
   - bigdecimal
+  - Bazelisk
+  - stests
   - cadvisor
   - configurator
   - confluentinc

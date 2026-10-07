@@ -15,10 +15,20 @@ module OpenTelemetry
         private_constant(:EMPTY_LIST)
 
         # No-op because this propagator does not inject any values.
-        def inject(carrier, context: Context.current, setter: Context::Propagation.text_map_setter); end
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        def inject(carrier, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:context, :setter])
+          _context = options.fetch(:context) { Context.current }
+          _setter = options.fetch(:setter) { Context::Propagation.text_map_setter }
+          nil
+        end
 
         # Returns the passed context unchanged because there is nothing to extract.
-        def extract(carrier, context: Context.current, getter: Context::Propagation.text_map_getter)
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        def extract(carrier, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:context, :getter])
+          context = options.fetch(:context) { Context.current }
+          _getter = options.fetch(:getter) { Context::Propagation.text_map_getter }
           context
         end
 

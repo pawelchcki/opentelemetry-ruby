@@ -19,20 +19,23 @@ module OpenTelemetry
 
         # Returns a new {TracerProvider} instance.
         #
-        # @param [optional Sampler] sampler The sampling policy for new spans
-        # @param [optional Resource] resource The resource to associate with spans
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        # @option options [Sampler] sampler The sampling policy for new spans
+        # @option options [Resource] resource The resource to associate with spans
         #   created by Tracers created by this TracerProvider
-        # @param [optional IDGenerator] id_generator The trace and span ID generation
+        # @option options [IDGenerator] id_generator The trace and span ID generation
         #   policy
-        # @param [optional SpanLimits] span_limits The limits to apply to attribute,
+        # @option options [SpanLimits] span_limits The limits to apply to attribute,
         #   event and link counts for Spans created by Tracers created by this
         #   TracerProvider
         #
         # @return [TracerProvider]
-        def initialize(sampler: sampler_from_environment(Samplers.parent_based(root: Samplers::ALWAYS_ON)),
-                       resource: OpenTelemetry::SDK::Resources::Resource.create,
-                       id_generator: OpenTelemetry::Trace,
-                       span_limits: SpanLimits::DEFAULT)
+        def initialize(options = {})
+          OpenTelemetry::Internal.validate_options(options, [:sampler, :resource, :id_generator, :span_limits])
+          sampler = options.fetch(:sampler) { sampler_from_environment(Samplers.parent_based(root: Samplers::ALWAYS_ON)) }
+          resource = options.fetch(:resource) { OpenTelemetry::SDK::Resources::Resource.create }
+          id_generator = options.fetch(:id_generator) { OpenTelemetry::Trace }
+          span_limits = options.fetch(:span_limits) { SpanLimits::DEFAULT }
           @mutex = Mutex.new
           @registry = {}
           @registry_mutex = Mutex.new
@@ -53,16 +56,28 @@ module OpenTelemetry
         # When both positional and keyword arguments are provided for the same
         # parameter, the keyword argument takes precedence.
         #
-        # @param [String] name Instrumentation scope name
-        # @param [String] version Instrumentation scope version
-        # @param [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes
+        # @option options [String] name Instrumentation scope name
+        # @option options [String] version Instrumentation scope version
+        # @option options [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes
         #   Instrumentation scope attributes
         #
         # @return [Tracer]
-        def tracer(deprecated_name = nil, deprecated_version = nil, name: nil, version: nil, attributes: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        def tracer(deprecated_name = nil, deprecated_version = nil, options = {}) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+          if deprecated_version.is_a?(Hash)
+            options = deprecated_version
+            deprecated_version = nil
+          elsif deprecated_name.is_a?(Hash)
+            options = deprecated_name
+            deprecated_name = nil
+          end
+          OpenTelemetry::Internal.validate_options(options, [:name, :version, :attributes])
+          name = options.fetch(:name, nil)
+          version = options.fetch(:version, nil)
+          attributes = options.fetch(:attributes, nil)
           name ||= deprecated_name || ''
           version ||= deprecated_version || ''
-          attributes = attributes&.dup&.freeze || EMPTY_ATTRIBUTES
+          attributes = (attributes && attributes.dup.freeze) || EMPTY_ATTRIBUTES
           OpenTelemetry.logger.warn 'calling TracerProvider#tracer without providing a tracer name.' if name.empty?
           @registry_mutex.synchronize do
             @registry[Key.new(name, version, attributes)] ||=
@@ -79,10 +94,13 @@ module OpenTelemetry
         #
         # After this is called all the newly created {Span}s will be no-op.
         #
-        # @param [optional Numeric] timeout An optional timeout in seconds.
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        # @option options [Numeric] timeout An optional timeout in seconds.
         # @return [Integer] Export::SUCCESS if no error occurred, Export::FAILURE if
         #   a non-specific failure occurred, Export::TIMEOUT if a timeout occurred.
-        def shutdown(timeout: nil)
+        def shutdown(options = {})
+          OpenTelemetry::Internal.validate_options(options, [:timeout])
+          timeout = options.fetch(:timeout, nil)
           @mutex.synchronize do
             if @stopped
               OpenTelemetry.logger.warn('calling Tracer#shutdown multiple times.')
@@ -92,7 +110,7 @@ module OpenTelemetry
             start_time = OpenTelemetry::Common::Utilities.timeout_timestamp
             results = @span_processors.map do |processor|
               remaining_timeout = OpenTelemetry::Common::Utilities.maybe_timeout(timeout, start_time)
-              break [Export::TIMEOUT] if remaining_timeout&.zero?
+              break [Export::TIMEOUT] if remaining_timeout && remaining_timeout.zero?
 
               processor.shutdown(timeout: remaining_timeout)
             end
@@ -109,17 +127,20 @@ module OpenTelemetry
         # the process after an invocation, but before the `Processor` exports
         # the completed spans.
         #
-        # @param [optional Numeric] timeout An optional timeout in seconds.
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        # @option options [Numeric] timeout An optional timeout in seconds.
         # @return [Integer] Export::SUCCESS if no error occurred, Export::FAILURE if
         #   a non-specific failure occurred, Export::TIMEOUT if a timeout occurred.
-        def force_flush(timeout: nil)
+        def force_flush(options = {})
+          OpenTelemetry::Internal.validate_options(options, [:timeout])
+          timeout = options.fetch(:timeout, nil)
           @mutex.synchronize do
             return Export::SUCCESS if @stopped
 
             start_time = OpenTelemetry::Common::Utilities.timeout_timestamp
             results = @span_processors.map do |processor|
               remaining_timeout = OpenTelemetry::Common::Utilities.maybe_timeout(timeout, start_time)
-              return Export::TIMEOUT if remaining_timeout&.zero?
+              return Export::TIMEOUT if remaining_timeout && remaining_timeout.zero?
 
               processor.force_flush(timeout: remaining_timeout)
             end
@@ -161,7 +182,7 @@ module OpenTelemetry
           if result.recording? && !@stopped
             trace_flags = result.sampled? ? OpenTelemetry::Trace::TraceFlags::SAMPLED : OpenTelemetry::Trace::TraceFlags::DEFAULT
             context = OpenTelemetry::Trace::SpanContext.new(trace_id: trace_id, span_id: span_id, trace_flags: trace_flags, tracestate: result.tracestate)
-            attributes = attributes&.merge(result.attributes) || result.attributes.dup
+            attributes = (attributes && attributes.merge(result.attributes)) || result.attributes.dup
             Span.new(
               context,
               parent_context,

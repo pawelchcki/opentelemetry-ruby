@@ -28,37 +28,37 @@ module OpenTelemetry
         class BatchSpanProcessor # rubocop:disable Metrics/ClassLength
           # Returns a new instance of the {BatchSpanProcessor}.
           #
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
           # @param [SpanExporter] exporter the (duck type) SpanExporter to where the
           #   recorded Spans are pushed after batching.
-          # @param [Numeric] exporter_timeout the maximum allowed time to export data.
+          # @option options [Numeric] exporter_timeout the maximum allowed time to export data.
           #   Defaults to the value of the OTEL_BSP_EXPORT_TIMEOUT
           #   environment variable, if set, or 30,000 (30 seconds).
-          # @param [Numeric] schedule_delay the delay interval between two consecutive exports.
+          # @option options [Numeric] schedule_delay the delay interval between two consecutive exports.
           #   Defaults to the value of the OTEL_BSP_SCHEDULE_DELAY environment
           #   variable, if set, or 5,000 (5 seconds).
-          # @param [Integer] max_queue_size the maximum queue size in spans.
+          # @option options [Integer] max_queue_size the maximum queue size in spans.
           #   Defaults to the value of the OTEL_BSP_MAX_QUEUE_SIZE environment
           #   variable, if set, or 2048.
-          # @param [Integer] max_export_batch_size the maximum batch size in spans.
+          # @option options [Integer] max_export_batch_size the maximum batch size in spans.
           #   Defaults to the value of the OTEL_BSP_MAX_EXPORT_BATCH_SIZE environment
           #   variable, if set, or 512.
           #
           # @return a new instance of the {BatchSpanProcessor}.
-          def initialize(exporter,
-                         exporter_timeout: Float(ENV.fetch('OTEL_BSP_EXPORT_TIMEOUT', 30_000)),
-                         schedule_delay: Float(ENV.fetch('OTEL_BSP_SCHEDULE_DELAY', 5_000)),
-                         max_queue_size: Integer(ENV.fetch('OTEL_BSP_MAX_QUEUE_SIZE', 2048)),
-                         max_export_batch_size: Integer(ENV.fetch('OTEL_BSP_MAX_EXPORT_BATCH_SIZE', 512)),
-                         start_thread_on_boot: String(ENV.fetch('OTEL_RUBY_BSP_START_THREAD_ON_BOOT', nil)) !~ /false/i,
-                         metrics_reporter: nil)
+          def initialize(exporter, options = {})
+            OpenTelemetry::Internal.validate_options(options, [:exporter_timeout, :schedule_delay, :max_queue_size, :max_export_batch_size, :start_thread_on_boot, :metrics_reporter])
+            exporter_timeout = options.fetch(:exporter_timeout) { Float(ENV.fetch('OTEL_BSP_EXPORT_TIMEOUT', 30_000)) }
+            schedule_delay = options.fetch(:schedule_delay) { Float(ENV.fetch('OTEL_BSP_SCHEDULE_DELAY', 5_000)) }
+            max_queue_size = options.fetch(:max_queue_size) { Integer(ENV.fetch('OTEL_BSP_MAX_QUEUE_SIZE', 2048)) }
+            max_export_batch_size = options.fetch(:max_export_batch_size) { Integer(ENV.fetch('OTEL_BSP_MAX_EXPORT_BATCH_SIZE', 512)) }
+            start_thread_on_boot = options.fetch(:start_thread_on_boot) { String(ENV.fetch('OTEL_RUBY_BSP_START_THREAD_ON_BOOT', nil)) !~ /false/i }
+            metrics_reporter = options.fetch(:metrics_reporter, nil)
             raise ArgumentError if max_export_batch_size > max_queue_size
             raise ArgumentError, "exporter #{exporter.inspect} does not appear to be a valid exporter" unless Common::Utilities.valid_exporter?(exporter)
 
             @exporter = exporter
             @exporter_timeout_seconds = exporter_timeout / 1000.0
-            @mutex = Mutex.new
-            @export_mutex = Mutex.new
-            @condition = ConditionVariable.new
+            initialize_synchronization
             @keep_running = true
             @delay_seconds = schedule_delay / 1000.0
             @max_queue_size = max_queue_size
@@ -97,10 +97,13 @@ module OpenTelemetry
           # the process after an invocation, but before the `Processor` exports
           # the completed spans.
           #
-          # @param [optional Numeric] timeout An optional timeout in seconds.
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+          # @option options [Numeric] timeout An optional timeout in seconds.
           # @return [Integer] SUCCESS if no error occurred, FAILURE if a
           #   non-specific failure occurred, TIMEOUT if a timeout occurred.
-          def force_flush(timeout: nil) # rubocop:disable Metrics/MethodLength
+          def force_flush(options = {}) # rubocop:disable Metrics/MethodLength
+            OpenTelemetry::Internal.validate_options(options, [:timeout])
+            timeout = options.fetch(:timeout, nil)
             start_time = OpenTelemetry::Common::Utilities.timeout_timestamp
             snapshot = lock do
               reset_on_fork(restart_thread: @keep_running)
@@ -108,7 +111,7 @@ module OpenTelemetry
             end
             until snapshot.empty?
               remaining_timeout = OpenTelemetry::Common::Utilities.maybe_timeout(timeout, start_time)
-              return TIMEOUT if remaining_timeout&.zero?
+              return TIMEOUT if remaining_timeout && remaining_timeout.zero?
 
               batch = snapshot.shift(@batch_size)
               result_code = export_batch(batch, timeout: remaining_timeout)
@@ -121,7 +124,7 @@ module OpenTelemetry
             # the snapshot because they're older than any spans in the spans buffer.
             lock do
               n = spans.size + snapshot.size - max_queue_size
-              if n.positive?
+              if n > 0
                 dropped_spans = snapshot.shift(n)
                 report_dropped_spans(dropped_spans, reason: 'buffer-full', function: __method__.to_s)
               end
@@ -133,10 +136,13 @@ module OpenTelemetry
           # Shuts the consumer thread down and flushes the current accumulated buffer
           # will block until the thread is finished.
           #
-          # @param [optional Numeric] timeout An optional timeout in seconds.
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+          # @option options [Numeric] timeout An optional timeout in seconds.
           # @return [Integer] SUCCESS if no error occurred, FAILURE if a
           #   non-specific failure occurred, TIMEOUT if a timeout occurred.
-          def shutdown(timeout: nil)
+          def shutdown(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:timeout])
+            timeout = options.fetch(:timeout, nil)
             start_time = OpenTelemetry::Common::Utilities.timeout_timestamp
             thread = lock do
               @keep_running = false
@@ -144,7 +150,7 @@ module OpenTelemetry
               @thread
             end
 
-            thread&.join(timeout)
+            thread.join(timeout) if thread
             force_flush(timeout: OpenTelemetry::Common::Utilities.maybe_timeout(timeout, start_time))
             dropped_spans = lock { spans.shift(spans.length) }
             report_dropped_spans(dropped_spans, reason: 'terminating') if dropped_spans.any?
@@ -171,7 +177,15 @@ module OpenTelemetry
             end
           end
 
-          def reset_on_fork(restart_thread: true)
+          def initialize_synchronization
+            @mutex = Mutex.new
+            @export_mutex = Mutex.new
+            @condition = ConditionVariable.new
+          end
+
+          def reset_on_fork(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:restart_thread])
+            restart_thread = options.fetch(:restart_thread, true)
             pid = Process.pid
             return if @pid == pid
 
@@ -183,7 +197,9 @@ module OpenTelemetry
             OpenTelemetry.handle_error(exception: e, message: 'unexpected error in BatchSpanProcessor#reset_on_fork')
           end
 
-          def export_batch(span_array, timeout: @exporter_timeout_seconds)
+          def export_batch(span_array, options = {})
+            OpenTelemetry::Internal.validate_options(options, [:timeout])
+            timeout = options.fetch(:timeout) { @exporter_timeout_seconds }
             batch = span_array.map(&:to_span_data)
             result_code = @export_mutex.synchronize { @exporter.export(batch, timeout: timeout) }
             report_result(result_code, span_array)
@@ -205,7 +221,10 @@ module OpenTelemetry
             end
           end
 
-          def report_dropped_spans(dropped_spans, reason:, function: nil)
+          def report_dropped_spans(dropped_spans, options = {})
+            OpenTelemetry::Internal.validate_options(options, [:reason, :function], [:reason])
+            reason = options.fetch(:reason)
+            function = options.fetch(:function, nil)
             @metrics_reporter.add_to_counter('otel.bsp.dropped_spans', increment: dropped_spans.size, labels: { 'reason' => reason, OpenTelemetry::SemanticConventions::Trace::CODE_FUNCTION => function })
           end
 

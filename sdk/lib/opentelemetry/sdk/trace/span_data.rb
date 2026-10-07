@@ -33,21 +33,21 @@ module OpenTelemetry
                               #
                               # @return [String] A 16-hex-character lowercase string.
                               def hex_span_id
-                                span_id.unpack1('H*')
+                                span_id.unpack('H*').first
                               end
 
                               # Returns the lowercase [hex encoded](https://tools.ietf.org/html/rfc4648#section-8) trace ID.
                               #
                               # @return [String] A 32-hex-character lowercase string.
                               def hex_trace_id
-                                trace_id.unpack1('H*')
+                                trace_id.unpack('H*').first
                               end
 
                               # Returns the lowercase [hex encoded](https://tools.ietf.org/html/rfc4648#section-8) parent span ID.
                               #
                               # @return [String] A 16-hex-character lowercase string.
                               def hex_parent_span_id
-                                parent_span_id.unpack1('H*')
+                                parent_span_id.unpack('H*').first
                               end
 
                               # Returns an InstrumentationScope struct, which is backwards compatible with InstrumentationLibrary.

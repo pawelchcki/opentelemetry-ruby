@@ -1,5 +1,9 @@
 # OpenTelemetry Registry Instrumentation
 
+The fork's `legacy-support` branch supports MRI Ruby 1.9.3 and later for this
+gem. See [legacy support and verification](../verification/README.md) for
+installation instructions and the Linux runtime matrix.
+
 The instrumentation Registry contains information about available instrumentation, facilitates discovery, installation, and configuration.
 
 The Registry allows for instrumentation to avoid depending directly on a specific SDK implementation.

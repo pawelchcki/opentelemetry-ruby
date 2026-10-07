@@ -69,11 +69,11 @@ module OpenTelemetry
       configurator = Configurator.new
       yield configurator if block_given?
       configurator.configure
-    rescue StandardError
+    rescue StandardError => original_error
       begin
         raise ConfigurationError
       rescue ConfigurationError => e
-        OpenTelemetry.handle_error(exception: e, message: "unexpected configuration error due to #{e.cause}")
+        OpenTelemetry.handle_error(exception: e, message: "unexpected configuration error due to #{original_error}")
       end
     end
   end

@@ -39,7 +39,7 @@ module OpenTelemetry
         def attributes
           # Don't bother synchronizing. Access by SpanProcessors is expected to
           # be serialized.
-          @attributes&.clone.freeze
+          (@attributes && @attributes.clone).freeze
         end
 
         # Return a frozen copy of the current events. This is intended for use
@@ -50,7 +50,7 @@ module OpenTelemetry
         def events
           # Don't bother synchronizing. Access by SpanProcessors is expected to
           # be serialized.
-          @events&.clone.freeze
+          (@events && @events.clone).freeze
         end
 
         # Return the flag whether this span is recording events
@@ -160,14 +160,18 @@ module OpenTelemetry
         # documents} certain "standard event names and keys" which have
         # prescribed semantic meanings.
         #
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @param [String] name Name of the event.
-        # @param [optional Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes
+        # @option options [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes
         #   One or more key:value pairs, where the keys must be strings and the
         #   values may be (array of) string, boolean or numeric type.
-        # @param [optional Time] timestamp Optional timestamp for the event.
+        # @option options [Time] timestamp Optional timestamp for the event.
         #
         # @return [self] returns itself
-        def add_event(name, attributes: nil, timestamp: nil)
+        def add_event(name, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:attributes, :timestamp])
+          attributes = options.fetch(:attributes, nil)
+          timestamp = options.fetch(:timestamp, nil)
           event = Event.new(name, truncate_attribute_values(attributes, @span_limits.event_attribute_length_limit), relative_timestamp(timestamp))
 
           @mutex.synchronize do
@@ -185,18 +189,20 @@ module OpenTelemetry
         # Record an exception during the execution of this span. Multiple exceptions
         # can be recorded on a span.
         #
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
         # @param [Exception] exception The exception to be recorded
-        # @param [optional Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}]
-        #   attributes One or more key:value pairs, where the keys must be
+        # @option options [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes One or more key:value pairs, where the keys must be
         #   strings and the values may be (array of) string, boolean or numeric
         #   type.
         #
         # @return [void]
-        def record_exception(exception, attributes: nil)
+        def record_exception(exception, options = {})
+          OpenTelemetry::Internal.validate_options(options, [:attributes])
+          attributes = options.fetch(:attributes, nil)
           event_attributes = {
             'exception.type' => exception.class.to_s,
             'exception.message' => exception.message,
-            'exception.stacktrace' => exception.full_message(highlight: false, order: :top).encode('UTF-8', invalid: :replace, undef: :replace, replace: '�')
+            'exception.stacktrace' => OpenTelemetry::Common::Utilities.exception_stacktrace(exception)
           }
           event_attributes.merge!(attributes) unless attributes.nil?
           add_event('exception', attributes: event_attributes)
@@ -261,10 +267,13 @@ module OpenTelemetry
         # {Export::BatchSpanProcessor} will also synchronize on a mutex, if that
         # processor is used.
         #
-        # @param [Time] end_timestamp optional end timestamp for the span.
+        # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+        # @option options [Time] end_timestamp optional end timestamp for the span.
         #
         # @return [self] returns itself
-        def finish(end_timestamp: nil)
+        def finish(options = {})
+          OpenTelemetry::Internal.validate_options(options, [:end_timestamp])
+          end_timestamp = options.fetch(:end_timestamp, nil)
           @mutex.synchronize do
             if @ended
               OpenTelemetry.logger.warn('Calling finish on an ended Span.')
@@ -324,7 +333,7 @@ module OpenTelemetry
           @name = name
           @kind = kind
           @parent_span_id = parent_span_id.freeze || OpenTelemetry::Trace::INVALID_SPAN_ID
-          @parent_span_is_remote = parent_span&.context&.remote? || false
+          @parent_span_is_remote = (parent_span && parent_span.context && parent_span.context.remote?) || false
           @span_limits = span_limits
           @span_processors = span_processors
           @resource = resource
@@ -332,8 +341,8 @@ module OpenTelemetry
           @ended = false
           @status = DEFAULT_STATUS
           @total_recorded_events = 0
-          @total_recorded_links = links&.size || 0
-          @total_recorded_attributes = attributes&.size || 0
+          @total_recorded_links = (links && links.size) || 0
+          @total_recorded_attributes = (attributes && attributes.size) || 0
           @attributes = attributes
           trim_span_attributes(@attributes)
           @events = nil
@@ -388,7 +397,7 @@ module OpenTelemetry
             n = @span_limits.attribute_count_limit
             attrs.delete_if do |_key, _value|
               n -= 1
-              n.negative?
+              (n < 0)
             end
           end
 
@@ -400,7 +409,7 @@ module OpenTelemetry
           return EMPTY_ATTRIBUTES if attrs.nil?
           return attrs if attribute_length_limit.nil?
 
-          attrs.transform_values! { |value| OpenTelemetry::Common::Utilities.truncate_attribute_value(value, attribute_length_limit) }
+          attrs.each { |key, value| attrs[key] = OpenTelemetry::Common::Utilities.truncate_attribute_value(value, attribute_length_limit) }
           attrs
         end
 
@@ -416,12 +425,12 @@ module OpenTelemetry
           # Slow path: trim attributes for each Link.
           valid_links = links.select { |link| link.span_context.valid? }
           excess_link_count = valid_links.size - link_count_limit
-          valid_links.pop(excess_link_count) if excess_link_count.positive?
+          valid_links.pop(excess_link_count) if excess_link_count > 0
           valid_links.map! do |link|
-            attrs = link.attributes.to_h.dup # link.attributes is frozen, so we need an unfrozen copy to adjust.
+            attrs = (link.attributes || {}).dup # link.attributes is frozen, so we need an unfrozen copy to adjust.
             attrs.keep_if { |key, value| Internal.valid_key?(key) && Internal.valid_value?(value) }
             excess = attrs.size - link_attribute_count_limit
-            excess.times { attrs.shift } if excess.positive?
+            excess.times { attrs.shift } if excess > 0
             OpenTelemetry::Trace::Link.new(link.span_context, attrs)
           end
         end
@@ -440,14 +449,14 @@ module OpenTelemetry
 
           # Slow path.
           excess = events.size + 1 - event_count_limit
-          events.shift(excess) if excess.positive?
+          events.shift(excess) if excess > 0
 
           excess = event.attributes.size - event_attribute_count_limit
-          if excess.positive? || !valid_attributes
-            attrs = event.attributes.to_h.dup # event.attributes is frozen, so we need an unfrozen copy to adjust.
+          if (excess > 0) || !valid_attributes
+            attrs = (event.attributes || {}).dup # event.attributes is frozen, so we need an unfrozen copy to adjust.
             attrs.keep_if { |key, value| Internal.valid_key?(key) && Internal.valid_value?(value) }
             excess = attrs.size - event_attribute_count_limit
-            excess.times { attrs.shift } if excess.positive?
+            excess.times { attrs.shift } if excess > 0
             event = Event.new(event.name, attrs.freeze, event.timestamp)
           end
           events << event
@@ -468,11 +477,11 @@ module OpenTelemetry
         end
 
         def realtime_now
-          Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+          OpenTelemetry::Common::Clock.realtime_nanoseconds
         end
 
         def monotonic_now
-          Process.clock_gettime(Process::CLOCK_MONOTONIC, :nanosecond)
+          OpenTelemetry::Common::Clock.monotonic_nanoseconds
         end
       end
     end

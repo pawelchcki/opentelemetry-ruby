@@ -50,14 +50,17 @@ module OpenTelemetry
       # @return [String]
       attr_reader :description
 
+      # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
       # @api private
       # The constructor is private and only for use internally by the class.
       # Users should use the {unset}, {error}, or {ok} factory methods to
       # obtain a {Status} instance.
       #
       # @param [Integer] code One of the status codes below
-      # @param [String] description
-      def initialize(code, description: '')
+      # @option options [String] description
+      def initialize(code, options = {})
+        OpenTelemetry::Internal.validate_options(options, [:description])
+        description = options.fetch(:description, '')
         @code = code
         @description = description
       end

@@ -25,3 +25,6 @@
 tags
 
 !docs
+
+# Bazel verification outputs
+/bazel-*

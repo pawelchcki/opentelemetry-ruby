@@ -30,17 +30,21 @@ module OpenTelemetry
           # Returns a new sampling result with the specified decision and
           # attributes.
           #
-          # @param [Symbol] decision Whether or not a span should be sampled
+          # @param [Hash] options Keyword-style options, also accepted as a Hash on legacy Ruby.
+          # @option options [Symbol] decision Whether or not a span should be sampled
           #   and/or record events.
-          # @param [optional Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}]
-          #   attributes A frozen or freezable hash containing attributes to be
+          # @option options [Hash{String => String, Numeric, Boolean, Array<String, Numeric, Boolean>}] attributes A frozen or freezable hash containing attributes to be
           #   attached to the span.
-          # @param [Tracestate] tracestate A Tracestate that will be associated
+          # @option options [Tracestate] tracestate A Tracestate that will be associated
           #   with the Span through the new SpanContext. If the sampler returns
           #   an empty Tracestate here, the Tracestate will be cleared, so
           #   samplers SHOULD normally return the passed-in Tracestate if they
           #   do not intend to change it.
-          def initialize(decision:, tracestate:, attributes: nil)
+          def initialize(options = {})
+            OpenTelemetry::Internal.validate_options(options, [:decision, :tracestate, :attributes], [:decision, :tracestate])
+            decision = options.fetch(:decision)
+            tracestate = options.fetch(:tracestate)
+            attributes = options.fetch(:attributes, nil)
             @decision = decision
             @attributes = attributes.freeze || EMPTY_HASH
             @tracestate = tracestate
