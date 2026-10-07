@@ -1,0 +1,22 @@
+{
+  "target": "branch",
+  "enforcement": "active",
+  "bypass_actors": [],
+  "name": "main cannot be deleted or force pushed",
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "refs/heads/main"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    }
+  ]
+}

@@ -77,6 +77,8 @@ words:
   - bigdecimal
   - Bazelisk
   - stests
+  - gpgsign
+  - pawelchcki
   - cadvisor
   - configurator
   - confluentinc

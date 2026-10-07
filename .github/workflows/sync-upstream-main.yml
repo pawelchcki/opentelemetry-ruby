@@ -1,0 +1,42 @@
+name: Sync upstream main
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-main-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: ${{ github.repository == 'pawelchcki/opentelemetry-ruby' && github.ref == 'refs/heads/legacy' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: upstream-sync
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: legacy
+          persist-credentials: false
+      - name: Test sync behavior
+        run: bash .github/scripts/test-sync-upstream-main.sh
+      - name: Fast-forward main from upstream
+        env:
+          UPSTREAM_SYNC_DEPLOY_KEY: ${{ secrets.UPSTREAM_SYNC_DEPLOY_KEY }}
+          UPSTREAM_REPOSITORY: https://github.com/open-telemetry/opentelemetry-ruby.git
+          FORK_REPOSITORY: git@github.com:pawelchcki/opentelemetry-ruby.git
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          key_directory=$(mktemp -d)
+          trap 'rm -rf "$key_directory"' EXIT
+          printf '%s\n' "$UPSTREAM_SYNC_DEPLOY_KEY" > "$key_directory/key"
+          unset UPSTREAM_SYNC_DEPLOY_KEY
+          export GIT_SSH_COMMAND="ssh -i $key_directory/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$GITHUB_WORKSPACE/.github/upstream-known-hosts"
+          bash .github/scripts/sync-upstream-main.sh

@@ -20,7 +20,7 @@ upstream releases:
 
 ```ruby
 git 'https://github.com/pawelchcki/opentelemetry-ruby.git',
-    :branch => 'legacy-support',
+    :branch => 'legacy',
     :glob => '{api,common,registry,sdk,semantic_conventions}/*.gemspec' do
   gem 'opentelemetry-api'
   gem 'opentelemetry-common'

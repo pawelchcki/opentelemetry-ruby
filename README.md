@@ -10,9 +10,22 @@
 
 The Ruby [OpenTelemetry](https://opentelemetry.io/) client.
 
-This fork’s `legacy-support` branch backports the core trace SDK to MRI Ruby
+This fork’s `legacy` branch backports the core trace SDK to MRI Ruby
 1.9.3. See [legacy support and verification](verification/README.md) for install
 instructions, the runtime matrix, and component coverage.
+
+The default branch is `legacy`; changes require a pull request. The protected
+`main` branch mirrors `open-telemetry/opentelemetry-ruby` and is updated only by
+the [upstream sync workflow](.github/workflows/sync-upstream-main.yml), every six
+hours or on manual dispatch from `legacy`. Syncs only fast-forward and stop if
+the histories diverge. Upstream changes reach `legacy` through pull requests.
+
+The sync uses the repository's sole write deploy key, stored as
+`UPSTREAM_SYNC_DEPLOY_KEY` in the `upstream-sync` environment. That environment
+only permits the `legacy` branch. The [rulesets](.github/rulesets) require PRs
+for `legacy`, restrict `main` updates to deploy keys, and prevent deletion or
+force pushes on both branches. Keep the sync key as the only write deploy key;
+GitHub's deploy-key bypass applies to all deploy keys on the repository.
 
 - [Getting Started][getting-started]
 - [Contributing](#contributing)
